@@ -1,4 +1,4 @@
 case_name,geometry,material,source,events,expected_peak_keV,peak_window_keV,peak_counts,total_nonzero_counts,root_file,spectrum_file
-solid_cs137_10k,solid,NaI,Cs137,10000,662.0,20.0,911,2047,results/root/solid_cs137_10k.root,results/spectra/solid_cs137_10k.png
-hollow_cs137_10k,hollow,NaI,Cs137,10000,662.0,20.0,4171,6080,results/root/hollow_cs137_10k.root,results/spectra/hollow_cs137_10k.png
-soccerball_cs137_10k,soccerball,BGO,Cs137,10000,662.0,20.0,9449,9889,results/root/soccerball_cs137_10k.root,results/spectra/soccerball_cs137_10k.png
+solid_cs137_1M,solid,NaI,Cs137,1000000,662.0,20.0,92977,212786,results/root/solid_cs137_1M.root,results/spectra/solid_cs137_1M.png
+hollow_cs137_1M,hollow,NaI,Cs137,1000000,662.0,20.0,420750,616096,results/root/hollow_cs137_1M.root,results/spectra/hollow_cs137_1M.png
+soccerball_cs137_1M,soccerball,BGO,Cs137,1000000,662.0,20.0,943364,988303,results/root/soccerball_cs137_1M.root,results/spectra/soccerball_cs137_1M.png

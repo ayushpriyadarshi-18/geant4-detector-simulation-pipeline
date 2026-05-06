@@ -11,11 +11,11 @@ This first release version supports a tested reference workflow:
     python scripts/geant4_pipeline.py --reference --dry-run
 
 Reference cases:
-    1. solid_cs137_10k
-    2. hollow_cs137_10k
-    3. soccerball_cs137_10k
+    1. solid_cs137_1M
+    2. hollow_cs137_1M
+    3. soccerball_cs137_1M
 
-Each case runs 10,000 events using a Cs-137-like 662 keV monoenergetic gamma source.
+Each case runs 1,000,000 events using a Cs-137-like 662 keV monoenergetic gamma source.
 
 Outputs:
     macros/reference/*.mac
@@ -91,10 +91,10 @@ class ReferenceCase:
 
 REFERENCE_CASES = [
     ReferenceCase(
-        name="solid_cs137_10k",
+        name="solid_cs137_1M",
         geometry="solid",
         material="NaI",
-        events=10_000,
+        events=1_000_000,
         source_name="Cs137",
         source_energy_keV=662.0,
         expected_peaks_keV=[662.0],
@@ -104,10 +104,10 @@ REFERENCE_CASES = [
         source_z_mm=-28.3,
     ),
     ReferenceCase(
-        name="hollow_cs137_10k",
+        name="hollow_cs137_1M",
         geometry="hollow",
         material="NaI",
-        events=10_000,
+        events=1_000_000,
         source_name="Cs137",
         source_energy_keV=662.0,
         expected_peaks_keV=[662.0],
@@ -118,10 +118,10 @@ REFERENCE_CASES = [
         source_z_mm=0.0,
     ),
     ReferenceCase(
-        name="soccerball_cs137_10k",
+        name="soccerball_cs137_1M",
         geometry="soccerball",
         material="BGO",
-        events=10_000,
+        events=1_000_000,
         source_name="Cs137",
         source_energy_keV=662.0,
         expected_peaks_keV=[662.0],
@@ -484,23 +484,76 @@ def analyze_root_file(
 
     bins = np.arange(0.0, xmax + bin_width_keV, bin_width_keV)
 
-    plt.figure(figsize=(9, 5))
-    plt.hist(nonzero, bins=bins, histtype="step")
-    plt.yscale("log")
-    plt.xlabel("Energy deposited in crystal (keV)")
-    plt.ylabel("Counts")
-    plt.title(f"{case.name} | {case.geometry} | {case.material}")
+    # Make spectrum
+    plt.figure(figsize=(6.2, 5.0))
+
+    counts, edges = np.histogram(nonzero, bins=bins)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+
+    ax = plt.gca()
+    ax.plot(centers, counts, linewidth=0.9)
+
+    ax.set_yscale("log")
+    ax.set_xlabel("Energy deposited in crystal (keV)", fontsize=12)
+    ax.set_ylabel("Counts", fontsize=12)
+
+    # Cleaner thesis-style title
+    geometry_label = {
+        "solid": "Solid detector",
+        "hollow": "Hollow detector",
+        "soccerball": "Near-4π detector",
+    }.get(case.geometry, case.geometry)
+
+    ax.set_title(
+        f"{case.material} {geometry_label}, Cs-137, $10^6$ events",
+        fontsize=13,
+        pad=12,
+    )
+
+    # Limit x-axis to useful Cs-137 range with margin after 662 keV
+    xmax_plot = max(case.expected_peaks_keV) + 120.0
+    ax.set_xlim(0, xmax_plot)
+
+    # Set y-limit with space for peak labels
+    positive_counts = counts[counts > 0]
+    if len(positive_counts) > 0:
+        ymin = max(1, positive_counts.min() * 0.7)
+        ymax = positive_counts.max() * 3.0
+        ax.set_ylim(ymin, ymax)
+
+    # Draw peak markers like the hollow-detector matrix plots:
+    # vertical line inside plot, label above line
+    ymin, ymax = ax.get_ylim()
+    label_y = ymax / 1.7
 
     for peak in case.expected_peaks_keV:
-        plt.axvline(peak, linestyle="--", linewidth=1)
-        plt.text(
+        # Dotted peak marker so the simulated peak remains visible
+        ax.axvline(
             peak,
-            1.2,
-            f"{peak:.0f} keV",
-            rotation=90,
-            va="bottom",
-            ha="right",
+            color="black",
+            linewidth=0.9,
+            linestyle=":",
+            zorder=1,
         )
+
+        # Shift label slightly to the right so it does not sit on the marker line
+        ax.text(
+            peak + 12,
+            label_y,
+            f"{peak:.0f}",
+            ha="left",
+            va="bottom",
+            fontsize=11,
+        )
+
+    # Clean box-style axes, ticks inside, labels outside
+    ax.tick_params(axis="both", which="both", direction="in")
+    ax.tick_params(axis="both", which="major", labelsize=11, length=5)
+    ax.tick_params(axis="both", which="minor", length=3)
+
+    # Keep full border box visible
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.0)
 
     plt.tight_layout()
 
@@ -576,7 +629,7 @@ def main() -> None:
     parser.add_argument(
         "--reference",
         action="store_true",
-        help="Use the three 10k reference cases: solid, hollow, soccerball",
+        help="Use the three 1M reference cases: solid, hollow, soccerball",
     )
 
     parser.add_argument(

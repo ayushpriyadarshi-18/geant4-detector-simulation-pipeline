@@ -23,9 +23,9 @@ The project is designed for scintillation detector studies involving solid cylin
 │   │   ├── vrml_hollow.mac
 │   │   └── vrml_soccerball.mac
 │   └── generated/
-│       ├── solid_cs137_10k.mac
-│       ├── hollow_cs137_10k.mac
-│       └── soccerball_cs137_10k.mac
+│       ├── solid_cs137_1M.mac
+│       ├── hollow_cs137_1M.mac
+│       └── soccerball_cs137_1M.mac
 └── results/
     ├── root/
     ├── logs/
@@ -109,12 +109,12 @@ For holder/plastic placement, the example macros use:
 
 ## Reference Simulations Included
 
-This repository includes three small reference simulations, each with `10000` events:
+This repository includes three reference simulations, each with `1,000,000` events:
 
 ```text
-solid_cs137_10k
-hollow_cs137_10k
-soccerball_cs137_10k
+solid_cs137_1M
+hollow_cs137_1M
+soccerball_cs137_1M
 ```
 
 These are generated and run using the Python pipeline.
@@ -162,25 +162,25 @@ results/vrml/
 ### Generated Macros
 
 ```text
-macros/generated/solid_cs137_10k.mac
-macros/generated/hollow_cs137_10k.mac
-macros/generated/soccerball_cs137_10k.mac
+macros/generated/solid_cs137_1M.mac
+macros/generated/hollow_cs137_1M.mac
+macros/generated/soccerball_cs137_1M.mac
 ```
 
 ### ROOT Files
 
 ```text
-results/root/solid_cs137_10k.root
-results/root/hollow_cs137_10k.root
-results/root/soccerball_cs137_10k.root
+results/root/solid_cs137_1M.root
+results/root/hollow_cs137_1M.root
+results/root/soccerball_cs137_1M.root
 ```
 
 ### Spectra
 
 ```text
-results/spectra/solid_cs137_10k.png
-results/spectra/hollow_cs137_10k.png
-results/spectra/soccerball_cs137_10k.png
+results/spectra/solid_cs137_1M.png
+results/spectra/hollow_cs137_1M.png
+results/spectra/soccerball_cs137_1M.png
 ```
 
 ### Tables
@@ -256,9 +256,9 @@ python scripts/geant4_pipeline.py --reference --generate
 This creates:
 
 ```text
-macros/generated/solid_cs137_10k.mac
-macros/generated/hollow_cs137_10k.mac
-macros/generated/soccerball_cs137_10k.mac
+macros/generated/solid_cs137_1M.mac
+macros/generated/hollow_cs137_1M.mac
+macros/generated/soccerball_cs137_1M.mac
 ```
 
 ### Dry Run
