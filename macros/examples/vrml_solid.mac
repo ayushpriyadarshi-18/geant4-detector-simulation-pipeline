@@ -1,0 +1,29 @@
+# ============================================================
+# VRML example macro: solid cylindrical detector
+# Geometry: solid
+# Material: NaI
+# Output: g4_00.wrl
+# ============================================================
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# Detector setup
+/det/material NaI
+/det/geometry solid
+/det/radius 24.900 mm
+/det/halfZ 24.900 mm
+/det/alThickness 0.400 mm
+
+# Source position
+/src/manualZ -28.300 mm
+
+# Initialize geometry
+/run/initialize
+
+# VRML visualization
+/vis/open VRML2FILE
+/vis/drawVolume
+/vis/viewer/flush

@@ -1,0 +1,36 @@
+# ============================================================
+# VRML example macro: hollow cylindrical detector with plastic holder
+# Geometry: hollow
+# Material: NaI
+# Output: g4_00.wrl
+# ============================================================
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# Detector setup
+/det/material NaI
+/det/geometry hollow
+/det/innerRadius 45.720 mm
+/det/thickness 50.800 mm
+/det/halfZ 76.200 mm
+/det/alThickness 0.400 mm
+
+# Plastic holder enabled
+/geom/usePlastic true
+/geom/plasticZ 0.000 mm
+
+# Source at centre of hollow cavity
+/src/manualZ 0.000 mm
+/src/usePlastic true
+/src/depth 1.000 mm
+
+# Initialize geometry
+/run/initialize
+
+# VRML visualization
+/vis/open VRML2FILE
+/vis/drawVolume
+/vis/viewer/flush

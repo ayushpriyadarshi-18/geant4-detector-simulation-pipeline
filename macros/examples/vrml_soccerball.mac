@@ -1,0 +1,32 @@
+# ============================================================
+# VRML example macro: soccerball / 4pi detector with plastic holder
+# Geometry: soccerball
+# Material: BGO
+# Output: g4_00.wrl
+# ============================================================
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# Detector setup
+/det/material BGO
+/det/geometry soccerball
+
+# Plastic holder enabled
+/geom/usePlastic true
+/geom/plasticZ 0.000 mm
+
+# Source/plastic positioning controls
+/src/manualZ 0.000 mm
+/src/usePlastic true
+/src/depth 1.000 mm
+
+# Initialize geometry
+/run/initialize
+
+# VRML visualization
+/vis/open VRML2FILE
+/vis/drawVolume
+/vis/viewer/flush

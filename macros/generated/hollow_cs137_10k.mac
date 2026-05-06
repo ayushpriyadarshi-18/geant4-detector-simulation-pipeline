@@ -1,0 +1,43 @@
+# ============================================================
+# Reference macro: hollow_cs137_10k
+# Geometry: hollow cylinder
+# Material: NaI
+# Source: Cs-137-like 662.0 keV mono gamma
+# Events: 10000
+# ============================================================
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# Detector setup
+/det/material NaI
+/det/geometry hollow
+/det/innerRadius 45.720 mm
+/det/thickness 50.800 mm
+/det/halfZ 76.200 mm
+
+# Hollow-cylinder Al lining thickness
+# This does not control soccerball Al geometry.
+/det/alThickness 0.400 mm
+
+# Source at centre of hollow cavity
+/src/manualZ 0.000 mm
+
+# Initialize
+/run/initialize
+
+# Source setup
+/gps/particle gamma
+/gps/pos/type Point
+/gps/pos/centre 0 0 0.000 mm
+/gps/ang/type iso
+/gps/ene/type Mono
+/gps/ene/mono 662.0 keV
+
+# Output
+/analysis/setFileName events
+
+# Run
+/run/beamOn 10000

@@ -1,0 +1,39 @@
+# ============================================================
+# Reference macro: solid_cs137_10k
+# Geometry: solid cylinder
+# Material: NaI
+# Source: Cs-137-like 662.0 keV mono gamma
+# Events: 10000
+# ============================================================
+
+/control/verbose 1
+/run/verbose 1
+/event/verbose 0
+/tracking/verbose 0
+
+# Detector setup
+/det/material NaI
+/det/geometry solid
+/det/radius 24.900 mm
+/det/halfZ 24.900 mm
+/det/alThickness 0.400 mm
+
+# Source position
+/src/manualZ -28.300 mm
+
+# Initialize
+/run/initialize
+
+# Source setup
+/gps/particle gamma
+/gps/pos/type Point
+/gps/pos/centre 0 0 -28.300 mm
+/gps/ang/type iso
+/gps/ene/type Mono
+/gps/ene/mono 662.0 keV
+
+# Output
+/analysis/setFileName events
+
+# Run
+/run/beamOn 10000
