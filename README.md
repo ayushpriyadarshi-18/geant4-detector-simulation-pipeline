@@ -215,7 +215,7 @@ results/vrml/soccerball_geometry.wrl
 Install the Python packages using:
 
 ```bash
-pip install numpy pandas matplotlib uproot openpyxl
+pip install -r requirements.txt
 ```
 
 ---
