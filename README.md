@@ -57,9 +57,10 @@ The project is designed for scintillation detector studies involving solid cylin
 The project currently supports:
 
 ```text
-solid       solid cylindrical detector
-hollow      hollow cylindrical detector
-soccerball  4π soccerball-style modular detector geometry
+solid           solid cylindrical detector
+hollow          hollow cylindrical detector
+layered_hollow  layered hollow cylindrical detector
+soccerball      4π soccerball-style modular detector geometry
 ```
 
 ### Solid Cylinder
@@ -96,6 +97,21 @@ The soccerball geometry uses:
 /det/material BGO
 ```
 
+### Layered Hollow Cylinder
+
+The layered hollow detector uses commands such as:
+
+```text
+/det/geometry layered_hollow
+/det/material NaI
+/det/innerRadius 52.070 mm
+/det/thickness 50.800 mm
+/det/halfZ 76.200 mm
+/det/alThickness 0.500 mm
+/det/layeredAirGap 4.750 mm
+/det/endShieldThickness 0.500 mm
+```
+
 For holder/plastic placement, the example macros use:
 
 ```text
@@ -104,7 +120,6 @@ For holder/plastic placement, the example macros use:
 /src/usePlastic true
 /src/depth 1.000 mm
 ```
-
 ---
 
 ## Reference Simulations Included
