@@ -44,7 +44,15 @@ DetectorConstruction::DetectorConstruction()
 
   fMessenger->DeclareMethodWithUnit("alThickness", "mm",
                                     &DetectorConstruction::SetAlThickness,
-                                    "Al thickness for solid front disk and hollow cylinder linings");
+                                    "Al thickness for curved Al sheets/envelopes");
+
+  fMessenger->DeclareMethodWithUnit("endShieldThickness", "mm",
+                                    &DetectorConstruction::SetEndShieldThickness,
+                                    "Thickness of only the flat annular Al end shields for layered_hollow geometry");
+
+  fMessenger->DeclareMethodWithUnit("layeredAirGap", "mm",
+                                    &DetectorConstruction::SetLayeredAirGap,
+                                    "Air gap thickness between inner Al sheet and scintillator for layered_hollow geometry");
 
   fMessenger->DeclareMethod("material",
                             &DetectorConstruction::SetCrystalMaterial,
@@ -52,7 +60,7 @@ DetectorConstruction::DetectorConstruction()
 
   fMessenger->DeclareMethod("geometry",
                             &DetectorConstruction::SetGeometryType,
-                            "Detector geometry: solid, hollow, soccer");
+                            "Detector geometry: solid, hollow, layered_hollow, soccer");
 
   fMessenger->DeclareMethod("hollow",
                             &DetectorConstruction::SetHollow,
@@ -110,8 +118,41 @@ void DetectorConstruction::SetAlThickness(G4double t)
 
   fAlThickness = t;
 
-  G4cout << "Al thickness for solid/hollow geometry set to: "
+  G4cout << "Al thickness for solid/hollow/layered_hollow shields set to: "
          << fAlThickness / mm << " mm" << G4endl;
+
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetEndShieldThickness(G4double t)
+{
+  if (t <= 0.0) {
+    G4Exception("DetectorConstruction::SetEndShieldThickness()",
+                "InvalidEndShieldThickness",
+                JustWarning,
+                "Flat Al end-shield thickness must be positive. Keeping old value.");
+    return;
+  }
+
+  fEndShieldThickness = t;
+  G4cout << "Flat Al end-shield thickness set to: "
+         << fEndShieldThickness / mm << " mm" << G4endl;
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetLayeredAirGap(G4double t)
+{
+  if (t <= 0.0) {
+    G4Exception("DetectorConstruction::SetLayeredAirGap()",
+                "InvalidLayeredAirGap",
+                FatalException,
+                "Layered hollow air gap thickness must be greater than zero.");
+  }
+
+  fLayeredAirGap = t;
+
+  G4cout << "Layered hollow air gap set to: "
+         << fLayeredAirGap / mm << " mm" << G4endl;
 
   G4RunManager::GetRunManager()->GeometryHasBeenModified();
 }
@@ -126,11 +167,15 @@ void DetectorConstruction::SetCrystalMaterial(const G4String& name)
 
 void DetectorConstruction::SetGeometryType(const G4String& type)
 {
-  if (type != "solid" && type != "hollow" && type != "soccer" && type != "soccerball") {
+  if (type != "solid" &&
+      type != "hollow" &&
+      type != "layered_hollow" &&
+      type != "soccer" &&
+      type != "soccerball") {
     G4Exception("DetectorConstruction::SetGeometryType()",
                 "InvalidGeometryType",
                 FatalException,
-                ("Unknown geometry type: " + type + ". Use solid, hollow, or soccer.").c_str());
+                ("Unknown geometry type: " + type + ". Use solid, hollow, layered_hollow, or soccer.").c_str());
   }
 
   fGeometryType = (type == "soccerball") ? "soccer" : type;
@@ -138,7 +183,7 @@ void DetectorConstruction::SetGeometryType(const G4String& type)
   if (fGeometryType == "solid") {
     fIsHollow = false;
   }
-  else if (fGeometryType == "hollow") {
+  else if (fGeometryType == "hollow" || fGeometryType == "layered_hollow") {
     fIsHollow = true;
   }
 
@@ -507,8 +552,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                 ("Unknown crystal material: " + fCrystalMaterialName).c_str());
   }
 
-  const G4bool isSoccerGeometry = (fGeometryType == "soccer" || fGeometryType == "soccerball");
-  const G4bool isHollowCylinder  = (fGeometryType == "hollow") || (fGeometryType != "solid" && fIsHollow);
+  const G4bool isSoccerGeometry  = (fGeometryType == "soccer" || fGeometryType == "soccerball");
+  const G4bool isLayeredHollow   = (fGeometryType == "layered_hollow");
+  const G4bool isHollowCylinder  = (fGeometryType == "hollow") ||
+                                   (fGeometryType != "solid" && fIsHollow && !isLayeredHollow);
+  const G4bool isAnnularCylinder = isHollowCylinder || isLayeredHollow;
 
   // ---------- geometry checks ----------
   if (!isSoccerGeometry && fCrystalHalfZ <= 0.0) {
@@ -518,39 +566,79 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                 "Crystal halfZ must be > 0.");
   }
 
+  G4double crystalInnerRadius = 0.0;
   G4double crystalOuterRadius = fCrystalRadius;
 
-  if (!isSoccerGeometry && !isHollowCylinder) {
+  const G4double alGap       = 0.5 * mm;       // Old hollow geometry gap
+  const G4double alThickness = fAlThickness;   // User-controlled Al thickness
+
+  if (!isSoccerGeometry && !isAnnularCylinder) {
     if (fCrystalRadius <= 0.0) {
       G4Exception("DetectorConstruction::Construct()",
                   "InvalidGeometry",
                   FatalException,
                   "Solid detector radius must be > 0.");
     }
-  } else if (!isSoccerGeometry) {
+
+    crystalInnerRadius = 0.0;
+    crystalOuterRadius = fCrystalRadius;
+  }
+  else if (!isSoccerGeometry && isHollowCylinder) {
     if (fInnerRadius <= 0.0) {
       G4Exception("DetectorConstruction::Construct()",
                   "InvalidGeometry",
                   FatalException,
                   "Hollow detector innerRadius must be > 0.");
     }
+
     if (fRadialThickness <= 0.0) {
       G4Exception("DetectorConstruction::Construct()",
                   "InvalidGeometry",
                   FatalException,
                   "Hollow detector thickness must be > 0.");
     }
+
+    if (fInnerRadius <= (alGap + alThickness)) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidGeometry",
+                  FatalException,
+                  "Inner radius too small for old hollow inner Al lining.");
+    }
+
+    crystalInnerRadius = fInnerRadius;
     crystalOuterRadius = fInnerRadius + fRadialThickness;
   }
+  else if (!isSoccerGeometry && isLayeredHollow) {
+    if (fInnerRadius <= 0.0) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidGeometry",
+                  FatalException,
+                  "Layered hollow cavity innerRadius must be > 0.");
+    }
 
-  const G4double alGap       = 0.5 * mm;
-  const G4double alThickness = fAlThickness;
+    if (fRadialThickness <= 0.0) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidGeometry",
+                  FatalException,
+                  "Layered hollow detector thickness must be > 0.");
+    }
 
-  if (!isSoccerGeometry && isHollowCylinder && fInnerRadius <= (alGap + alThickness)) {
-    G4Exception("DetectorConstruction::Construct()",
-                "InvalidGeometry",
-                FatalException,
-                "Inner radius too small for inner Al lining.");
+    if (alThickness <= 0.0 || fLayeredAirGap <= 0.0) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidGeometry",
+                  FatalException,
+                  "Layered hollow Al thickness and air gap must be > 0.");
+    }
+
+    // Correct layered hollow radial stack:
+    // hollow core:     0 -> fInnerRadius
+    // cylindrical Al:  fInnerRadius -> fInnerRadius + Al
+    // air gap:         + fLayeredAirGap
+    // crystal:         + fRadialThickness
+    //
+    // Flat Al shields are added only on the exposed +/-Z annular faces.
+    crystalInnerRadius = fInnerRadius + alThickness + fLayeredAirGap;
+    crystalOuterRadius = crystalInnerRadius + fRadialThickness;
   }
 
   // Plastic holder dimensions (same as old implementation)
@@ -562,7 +650,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // Solid mode: front arrangement
   // Hollow mode: bore center
   if (fUsePlastic) {
-    if (isHollowCylinder) {
+    if (isAnnularCylinder) {
       // Keep plastic at user-given fPlasticZ, default 0
     } else {
       // If user did not explicitly change plasticZ, a reasonable front position is used
@@ -582,6 +670,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
   if (isHollowCylinder) {
     maxOuterRadius = crystalOuterRadius + alGap + alThickness;
+  }
+  else if (isLayeredHollow) {
+    maxOuterRadius = crystalOuterRadius + alThickness;
   }
 
   if (fUsePlastic && plasticRadius > maxOuterRadius) {
@@ -702,16 +793,17 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // ---------- crystal ----------
   G4VSolid* solidCrystal = nullptr;
 
-  if (!isHollowCylinder) {
+  if (!isAnnularCylinder) {
     solidCrystal = new G4Tubs("Crystal",
                               0.0,
                               crystalOuterRadius,
                               fCrystalHalfZ,
                               0.0,
                               360.0 * deg);
-  } else {
+  }
+  else {
     solidCrystal = new G4Tubs("Crystal",
-                              fInnerRadius,
+                              crystalInnerRadius,
                               crystalOuterRadius,
                               fCrystalHalfZ,
                               0.0,
@@ -730,7 +822,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                     true);
 
   // ---------- aluminium ----------
-  if (!isHollowCylinder) {
+  if (!isAnnularCylinder) {
     G4double alHalfZ = fAlThickness / 2.0;
     G4double zAl = -(fCrystalHalfZ + alHalfZ + 2.0 * mm);
 
@@ -755,7 +847,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     auto visAl = new G4VisAttributes(G4Colour(0.7, 0.7, 0.7));
     visAl->SetForceSolid(true);
     logicAlDisk->SetVisAttributes(visAl);
-  } else {
+  }
+  else if (isHollowCylinder) {
+    // Old hollow geometry retained unchanged:
+    // central air bore -> inner Al lining -> 0.5 mm air gap -> crystal -> 0.5 mm gap -> outer Al lining
+
     G4double innerAlOuterRadius = fInnerRadius - alGap;
     G4double innerAlInnerRadius = innerAlOuterRadius - alThickness;
 
@@ -802,6 +898,150 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     visAl->SetForceSolid(true);
     logicAlInner->SetVisAttributes(visAl);
     logicAlOuter->SetVisAttributes(visAl);
+  }
+  else if (isLayeredHollow) {
+    // Option B layered hollow design:
+    // hollow core -> inner cylindrical Al sheet -> air gap -> scintillator detector
+    // -> outer cylindrical Al envelope.
+    // Two flat annular Al shields are added on the exposed +/-Z faces.
+
+    const G4double rCavityOuter = fInnerRadius;
+
+    const G4double rInnerAlInner = rCavityOuter;
+    const G4double rInnerAlOuter = rInnerAlInner + alThickness;
+
+    const G4double rAirGapInner = rInnerAlOuter;
+    const G4double rAirGapOuter = rAirGapInner + fLayeredAirGap;
+
+    const G4double rCrystalInner = rAirGapOuter;
+    const G4double rCrystalOuter = rCrystalInner + fRadialThickness;
+
+    const G4double rOuterAlInner = rCrystalOuter;
+    const G4double rOuterAlOuter = rOuterAlInner + alThickness;
+
+    auto solidAlInnerSheet = new G4Tubs("LayeredInnerAlSheet",
+                                        rInnerAlInner,
+                                        rInnerAlOuter,
+                                        fCrystalHalfZ,
+                                        0.0,
+                                        360.0 * deg);
+
+    auto logicAlInnerSheet = new G4LogicalVolume(solidAlInnerSheet,
+                                                 Al,
+                                                 "LayeredInnerAlSheet");
+
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(),
+                      logicAlInnerSheet,
+                      "LayeredInnerAlSheet",
+                      fLogicWorld,
+                      false,
+                      0,
+                      true);
+
+    auto solidAirGap = new G4Tubs("LayeredAirGap",
+                                  rAirGapInner,
+                                  rAirGapOuter,
+                                  fCrystalHalfZ,
+                                  0.0,
+                                  360.0 * deg);
+
+    auto logicAirGap = new G4LogicalVolume(solidAirGap,
+                                           air,
+                                           "LayeredAirGap");
+
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(),
+                      logicAirGap,
+                      "LayeredAirGap",
+                      fLogicWorld,
+                      false,
+                      0,
+                      true);
+
+    auto solidAlOuterEnvelope = new G4Tubs("LayeredOuterAlEnvelope",
+                                           rOuterAlInner,
+                                           rOuterAlOuter,
+                                           fCrystalHalfZ,
+                                           0.0,
+                                           360.0 * deg);
+
+    auto logicAlOuterEnvelope = new G4LogicalVolume(solidAlOuterEnvelope,
+                                                    Al,
+                                                    "LayeredOuterAlEnvelope");
+
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(),
+                      logicAlOuterEnvelope,
+                      "LayeredOuterAlEnvelope",
+                      fLogicWorld,
+                      false,
+                      0,
+                      true);
+
+    // Flat end shields on the two exposed faces.
+    // They are annular disks, so the central hollow core stays open.
+    // Radially they cover the full detector package outside the hollow core:
+    // inner Al + air gap + scintillator + outer Al envelope.
+    const G4double endShieldHalfZ = fEndShieldThickness / 2.0;
+    const G4double zFrontShield = -(fCrystalHalfZ + endShieldHalfZ);
+    const G4double zBackShield  = +(fCrystalHalfZ + endShieldHalfZ);
+
+    auto solidAlEndShield = new G4Tubs("LayeredAlEndShield",
+                                       rCavityOuter,
+                                       rOuterAlOuter,
+                                       endShieldHalfZ,
+                                       0.0,
+                                       360.0 * deg);
+
+    auto logicAlFrontEndShield = new G4LogicalVolume(solidAlEndShield,
+                                                     Al,
+                                                     "LayeredAlFrontEndShield");
+
+    auto logicAlBackEndShield = new G4LogicalVolume(solidAlEndShield,
+                                                    Al,
+                                                    "LayeredAlBackEndShield");
+
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(0., 0., zFrontShield),
+                      logicAlFrontEndShield,
+                      "LayeredAlFrontEndShield",
+                      fLogicWorld,
+                      false,
+                      0,
+                      true);
+
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(0., 0., zBackShield),
+                      logicAlBackEndShield,
+                      "LayeredAlBackEndShield",
+                      fLogicWorld,
+                      false,
+                      0,
+                      true);
+
+    auto visAl = new G4VisAttributes(G4Colour(0.7, 0.7, 0.7));
+    visAl->SetForceSolid(true);
+
+    logicAlInnerSheet->SetVisAttributes(visAl);
+    logicAlOuterEnvelope->SetVisAttributes(visAl);
+    logicAlFrontEndShield->SetVisAttributes(visAl);
+    logicAlBackEndShield->SetVisAttributes(visAl);
+
+    auto visAirGap = new G4VisAttributes(G4Colour(0.8, 0.9, 1.0));
+    visAirGap->SetForceSolid(false);
+    logicAirGap->SetVisAttributes(visAirGap);
+
+    G4cout << "Layered hollow radial stack:" << G4endl;
+    G4cout << "  Hollow core:        0 to " << rCavityOuter / mm << " mm" << G4endl;
+    G4cout << "  Inner Al sheet:     " << rInnerAlInner / mm << " to " << rInnerAlOuter / mm << " mm" << G4endl;
+    G4cout << "  Air gap:            " << rAirGapInner / mm << " to " << rAirGapOuter / mm << " mm" << G4endl;
+    G4cout << "  Crystal:            " << rCrystalInner / mm << " to " << rCrystalOuter / mm << " mm" << G4endl;
+    G4cout << "  Outer Al envelope:  " << rOuterAlInner / mm << " to " << rOuterAlOuter / mm << " mm" << G4endl;
+    G4cout << "  Flat Al shields:    thickness " << fEndShieldThickness / mm
+           << " mm, z = +/-" << (fCrystalHalfZ + endShieldHalfZ) / mm
+           << " mm, radial range " << rCavityOuter / mm << " to "
+           << rOuterAlOuter / mm << " mm" << G4endl;
   }
 
   // ---------- plastic holder ----------

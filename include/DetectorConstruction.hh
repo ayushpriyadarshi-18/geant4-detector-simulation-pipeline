@@ -24,6 +24,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetCrystalMaterial(const G4String& name);
     void SetGeometryType(const G4String& type);
     void SetAlThickness(G4double t);
+    void SetEndShieldThickness(G4double t);
+    void SetLayeredAirGap(G4double t);
 
     void SetHollow(G4bool val);
     void SetInnerRadius(G4double r);
@@ -48,9 +50,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
     G4double fCrystalRadius = 12.7 * mm;
     G4double fCrystalHalfZ  = 12.7 * mm;
-    G4double fAlThickness   = 0.5 * mm;   // Used by solid Al disk and hollow Al linings. Soccer-ball Al remains unchanged.
+    G4double fAlThickness        = 0.5 * mm;   // Curved/cylindrical Al parts: inner Al sheet and outer Al envelope. Soccer-ball Al remains unchanged.
+    G4double fEndShieldThickness = 0.5 * mm;   // Flat annular Al shields on the exposed +/-Z faces only.
+    G4double fLayeredAirGap      = 4.75 * mm;  // Air gap between inner Al sheet and scintillator in layered_hollow mode.
     G4String fCrystalMaterialName = "NaI";
-    G4String fGeometryType = "solid";  // solid, hollow, soccer
+    G4String fGeometryType = "solid";  // solid, hollow, layered_hollow, soccer
 
     G4bool   fIsHollow        = false;
     G4double fInnerRadius     = 0.0 * mm;
