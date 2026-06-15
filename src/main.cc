@@ -46,12 +46,9 @@ int main(int argc, char** argv)
   // User actions
   runManager->SetUserInitialization(new ActionInitialization());
 
-  // Visualization: ONLY in interactive mode
-  G4VisManager* visManager = nullptr;
-  if (ui) {
-    visManager = new G4VisExecutive();
-    visManager->Initialize();
-  }
+  // Visualization commands may be used by both interactive sessions and batch macros.
+  G4VisManager* visManager = new G4VisExecutive();
+  visManager->Initialize();
 
   auto* UImanager = G4UImanager::GetUIpointer();
 
