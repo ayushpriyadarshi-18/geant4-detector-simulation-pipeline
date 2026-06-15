@@ -54,6 +54,22 @@ DetectorConstruction::DetectorConstruction()
                                     &DetectorConstruction::SetLayeredAirGap,
                                     "Air gap thickness between inner Al sheet and scintillator for layered_hollow geometry");
 
+  fMessenger->DeclareMethod("useSoccerChamber",
+                            &DetectorConstruction::SetUseSoccerChamber,
+                            "Enable/disable central closed Al chamber for soccer geometry");
+
+  fMessenger->DeclareMethodWithUnit("soccerChamberOuterRadius", "mm",
+                                    &DetectorConstruction::SetSoccerChamberOuterRadius,
+                                    "Outer radius of central closed Al chamber for soccer geometry");
+
+  fMessenger->DeclareMethodWithUnit("soccerChamberHalfZ", "mm",
+                                    &DetectorConstruction::SetSoccerChamberHalfZ,
+                                    "Half-height of central closed Al chamber for soccer geometry");
+
+  fMessenger->DeclareMethodWithUnit("soccerChamberThickness", "mm",
+                                    &DetectorConstruction::SetSoccerChamberThickness,
+                                    "Al thickness of central closed chamber for soccer geometry");
+
   fMessenger->DeclareMethod("material",
                             &DetectorConstruction::SetCrystalMaterial,
                             "Crystal material: LaBr3, NaI, PbWO4, CsI, GGAG, BGO");
@@ -154,6 +170,59 @@ void DetectorConstruction::SetLayeredAirGap(G4double t)
   G4cout << "Layered hollow air gap set to: "
          << fLayeredAirGap / mm << " mm" << G4endl;
 
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetUseSoccerChamber(G4bool val)
+{
+  fUseSoccerChamber = val;
+  G4cout << "Soccer chamber enabled: "
+         << (fUseSoccerChamber ? "true" : "false") << G4endl;
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetSoccerChamberOuterRadius(G4double r)
+{
+  if (r <= 0.0) {
+    G4Exception("DetectorConstruction::SetSoccerChamberOuterRadius()",
+                "InvalidSoccerChamberOuterRadius",
+                FatalException,
+                "Soccer chamber outer radius must be greater than zero.");
+  }
+
+  fSoccerChamberOuterRadius = r;
+  G4cout << "Soccer chamber outer radius set to: "
+         << fSoccerChamberOuterRadius / mm << " mm" << G4endl;
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetSoccerChamberHalfZ(G4double z)
+{
+  if (z <= 0.0) {
+    G4Exception("DetectorConstruction::SetSoccerChamberHalfZ()",
+                "InvalidSoccerChamberHalfZ",
+                FatalException,
+                "Soccer chamber halfZ must be greater than zero.");
+  }
+
+  fSoccerChamberHalfZ = z;
+  G4cout << "Soccer chamber halfZ set to: "
+         << fSoccerChamberHalfZ / mm << " mm" << G4endl;
+  G4RunManager::GetRunManager()->GeometryHasBeenModified();
+}
+
+void DetectorConstruction::SetSoccerChamberThickness(G4double t)
+{
+  if (t <= 0.0) {
+    G4Exception("DetectorConstruction::SetSoccerChamberThickness()",
+                "InvalidSoccerChamberThickness",
+                FatalException,
+                "Soccer chamber thickness must be greater than zero.");
+  }
+
+  fSoccerChamberThickness = t;
+  G4cout << "Soccer chamber thickness set to: "
+         << fSoccerChamberThickness / mm << " mm" << G4endl;
   G4RunManager::GetRunManager()->GeometryHasBeenModified();
 }
 
@@ -311,8 +380,8 @@ G4VSolid* BuildSoccerInnerAlSolid(const SoccerModuleData& module)
 
   const int n = module.n_sides;
 
-  std::vector<G4ThreeVector> outer; // full cell face at r = 100 mm
-  std::vector<G4ThreeVector> inner; // full cell face at r = 99.5 mm
+  std::vector<G4ThreeVector> inner; // full cell face at cavity boundary
+  std::vector<G4ThreeVector> outer; // full cell face behind 0.5 mm inner Al
 
   for (int i = 0; i < n; i++) {
 
@@ -322,8 +391,7 @@ G4VSolid* BuildSoccerInnerAlSolid(const SoccerModuleData& module)
       module.cell_inner_vertices_mm[i].z_mm * mm
     );
 
-    G4ThreeVector dir = vInner.unit();
-    G4ThreeVector vOuter = dir * ((soccerInnerRadius_mm + 0.5) * mm);
+    G4ThreeVector vOuter = vInner * ((soccerInnerRadius_mm + 0.5) / soccerInnerRadius_mm);
 
     inner.push_back(vInner);
     outer.push_back(vOuter);
@@ -391,23 +459,22 @@ G4VSolid* BuildSoccerSideAlSolid(const SoccerModuleData& module)
 
   const int n = module.n_sides;
 
-  std::vector<G4ThreeVector> capOuter;     // full cell boundary at r = 100.5 mm
+  std::vector<G4ThreeVector> capOuter;     // full cell boundary behind 0.5 mm inner Al
   std::vector<G4ThreeVector> cellOuter;    // full cell boundary at outer radius
   std::vector<G4ThreeVector> crystalInner; // shrunk crystal boundary at r = 100.5 mm
   std::vector<G4ThreeVector> crystalOuter; // shrunk crystal boundary at outer radius
 
   for (int i = 0; i < n; i++) {
 
-    // Full cell inner boundary at r = 100.0 mm
+    // Full cell inner boundary at cavity face-plane distance.
     G4ThreeVector vCellInner(
       module.cell_inner_vertices_mm[i].x_mm * mm,
       module.cell_inner_vertices_mm[i].y_mm * mm,
       module.cell_inner_vertices_mm[i].z_mm * mm
     );
 
-    // Move it outward to r = 100.5 mm to match outer face of inner Al cap
-    G4ThreeVector dir = vCellInner.unit();
-    G4ThreeVector vCapOuter = dir * ((soccerInnerRadius_mm + 0.5) * mm);
+    // Move it outward to the crystal inner face-plane distance.
+    G4ThreeVector vCapOuter = vCellInner * ((soccerInnerRadius_mm + 0.5) / soccerInnerRadius_mm);
 
     capOuter.push_back(vCapOuter);
 
@@ -442,7 +509,7 @@ G4VSolid* BuildSoccerSideAlSolid(const SoccerModuleData& module)
   for (int i = 0; i < n; i++) {
     int j = (i + 1) % n;
 
-    // 1. Inner ring face at r = 100.5 mm
+    // 1. Inner ring face at the crystal inner face-plane distance
     AddQuad(
       capOuter[i],
       crystalInner[i],
@@ -641,6 +708,37 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     crystalOuterRadius = crystalInnerRadius + fRadialThickness;
   }
 
+  if (isSoccerGeometry && fUseSoccerChamber) {
+    if (fSoccerChamberOuterRadius <= 0.0 ||
+        fSoccerChamberHalfZ <= 0.0 ||
+        fSoccerChamberThickness <= 0.0) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidSoccerChamberGeometry",
+                  FatalException,
+                  "Soccer chamber dimensions must be greater than zero.");
+    }
+
+    if (fSoccerChamberThickness >= fSoccerChamberOuterRadius) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidSoccerChamberGeometry",
+                  FatalException,
+                  "Soccer chamber thickness must be smaller than outer radius.");
+    }
+
+    const G4double soccerInnerRadius = soccerInnerRadius_mm * mm;
+    const G4double chamberCornerRadius =
+      std::sqrt(fSoccerChamberOuterRadius * fSoccerChamberOuterRadius +
+                fSoccerChamberHalfZ * fSoccerChamberHalfZ);
+    const G4double chamberClearance = 0.1 * mm;
+
+    if (chamberCornerRadius + chamberClearance >= soccerInnerRadius) {
+      G4Exception("DetectorConstruction::Construct()",
+                  "InvalidSoccerChamberGeometry",
+                  FatalException,
+                  "Soccer chamber does not fit inside the soccer-ball cavity.");
+    }
+  }
+
   // Plastic holder dimensions (same as old implementation)
   const G4double plasticRadius = 10.0 * mm;   // 20 mm diameter
   const G4double plasticHalfZ  = 2.5 * mm;    // 5 mm thick
@@ -755,6 +853,73 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
       auto visAlSide = new G4VisAttributes(G4Colour(0.55, 0.55, 0.55));
       visAlSide->SetForceSolid(true);
       logicAlSide->SetVisAttributes(visAlSide);
+    }
+
+    if (fUseSoccerChamber) {
+      const G4double chamberOuterR = fSoccerChamberOuterRadius;
+      const G4double chamberInnerR = chamberOuterR - fSoccerChamberThickness;
+      const G4double chamberHalfZ  = fSoccerChamberHalfZ;
+      const G4double capHalfZ      = 0.5 * fSoccerChamberThickness;
+
+      auto solidChamberSide = new G4Tubs("SoccerChamberSide",
+                                         chamberInnerR,
+                                         chamberOuterR,
+                                         chamberHalfZ,
+                                         0.0,
+                                         360.0 * deg);
+      auto logicChamberSide = new G4LogicalVolume(solidChamberSide,
+                                                  Al,
+                                                  "SoccerChamberSide_LV");
+      new G4PVPlacement(nullptr,
+                        G4ThreeVector(),
+                        logicChamberSide,
+                        "SoccerChamberSide_PV",
+                        fLogicWorld,
+                        false,
+                        0,
+                        true);
+
+      auto solidChamberTopCap = new G4Tubs("SoccerChamberTopCap",
+                                           0.0,
+                                           chamberInnerR,
+                                           capHalfZ,
+                                           0.0,
+                                           360.0 * deg);
+      auto logicChamberTopCap = new G4LogicalVolume(solidChamberTopCap,
+                                                    Al,
+                                                    "SoccerChamberTopCap_LV");
+      new G4PVPlacement(nullptr,
+                        G4ThreeVector(0.0, 0.0, chamberHalfZ - capHalfZ),
+                        logicChamberTopCap,
+                        "SoccerChamberTopCap_PV",
+                        fLogicWorld,
+                        false,
+                        0,
+                        true);
+
+      auto solidChamberBottomCap = new G4Tubs("SoccerChamberBottomCap",
+                                              0.0,
+                                              chamberInnerR,
+                                              capHalfZ,
+                                              0.0,
+                                              360.0 * deg);
+      auto logicChamberBottomCap = new G4LogicalVolume(solidChamberBottomCap,
+                                                       Al,
+                                                       "SoccerChamberBottomCap_LV");
+      new G4PVPlacement(nullptr,
+                        G4ThreeVector(0.0, 0.0, -chamberHalfZ + capHalfZ),
+                        logicChamberBottomCap,
+                        "SoccerChamberBottomCap_PV",
+                        fLogicWorld,
+                        false,
+                        0,
+                        true);
+
+      auto visSoccerChamber = new G4VisAttributes(G4Colour(0.8, 0.8, 0.8));
+      visSoccerChamber->SetForceSolid(true);
+      logicChamberSide->SetVisAttributes(visSoccerChamber);
+      logicChamberTopCap->SetVisAttributes(visSoccerChamber);
+      logicChamberBottomCap->SetVisAttributes(visSoccerChamber);
     }
 
     fLogicPlastic = nullptr;

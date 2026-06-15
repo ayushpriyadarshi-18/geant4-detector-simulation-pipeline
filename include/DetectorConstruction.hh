@@ -26,6 +26,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetAlThickness(G4double t);
     void SetEndShieldThickness(G4double t);
     void SetLayeredAirGap(G4double t);
+    void SetUseSoccerChamber(G4bool val);
+    void SetSoccerChamberOuterRadius(G4double r);
+    void SetSoccerChamberHalfZ(G4double z);
+    void SetSoccerChamberThickness(G4double t);
 
     void SetHollow(G4bool val);
     void SetInnerRadius(G4double r);
@@ -55,6 +59,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4double fLayeredAirGap      = 4.75 * mm;  // Air gap between inner Al sheet and scintillator in layered_hollow mode.
     G4String fCrystalMaterialName = "NaI";
     G4String fGeometryType = "solid";  // solid, hollow, layered_hollow, soccer
+
+    G4bool   fUseSoccerChamber = false;
+    G4double fSoccerChamberOuterRadius = 70.0 * mm;
+    G4double fSoccerChamberHalfZ       = 68.5 * mm;
+    G4double fSoccerChamberThickness   = 2.0 * mm;
 
     G4bool   fIsHollow        = false;
     G4double fInnerRadius     = 0.0 * mm;

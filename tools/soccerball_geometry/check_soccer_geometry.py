@@ -16,7 +16,7 @@ ax = fig.add_subplot(111, projection="3d")
 all_pts = []
 
 for face in data["faces"]:
-    verts = np.array(face["inner_vertices_cm"])
+    verts = np.array(face["cell_inner_vertices_cm"])
     all_pts.extend(verts)
 
     if face["type"] == "pentagon":
@@ -57,7 +57,7 @@ ax.set_xlabel("X cm")
 ax.set_ylabel("Y cm")
 ax.set_zlabel("Z cm")
 
-ax.set_title("Inner surface: soccer-ball detector faces")
+ax.set_title("Cell inner surface: soccer-ball detector cavity")
 
 # Set a cleaner viewing angle
 ax.view_init(elev=20, azim=35)

@@ -6,7 +6,9 @@ import numpy as np
 from itertools import combinations
 
 INNER_RADIUS_CM = 10.00
-OUTER_RADIUS_CM = 17.62
+INNER_AL_THICKNESS_CM = 0.05
+SCINTILLATOR_THICKNESS_CM = 7.62
+OUTER_RADIUS_CM = INNER_RADIUS_CM + INNER_AL_THICKNESS_CM + SCINTILLATOR_THICKNESS_CM
 
 # 0.5 mm inward shrink from each polygon edge.
 # This creates approximately 1.0 mm crystal-to-crystal gap
@@ -19,6 +21,17 @@ OUTPUT_FILE = "soccer_detector_faces.json"
 def unit(v):
     v = np.array(v, dtype=float)
     return v / np.linalg.norm(v)
+
+
+def face_plane_distance(points):
+    points = [np.array(p, dtype=float) for p in points]
+    normal = unit(np.cross(points[1] - points[0], points[2] - points[0]))
+    center = np.mean(points, axis=0)
+
+    if np.dot(normal, center) < 0:
+        normal = -normal
+
+    return np.dot(normal, points[0])
 
 
 def cross2d(a, b):
@@ -176,16 +189,17 @@ def make_face_json(face_id, face_type, n_sides, pts):
     normal = unit(center)
 
     # Full unshrunk soccer-ball cell boundary.
-    # This defines the smooth cavity surface and the full cell envelope.
-    cell_inner_pts = [unit(p) * INNER_RADIUS_CM for p in pts]
-    cell_outer_pts = [unit(p) * OUTER_RADIUS_CM for p in pts]
+    # INNER_RADIUS_CM is the minimum face-plane distance from the origin,
+    # not the vertex radius. Uniform scaling keeps neighbouring cells shared.
+    cell_inner_pts = [p * (INNER_RADIUS_CM / BASE_MIN_FACE_DISTANCE_CM) for p in pts]
+    cell_outer_pts = [p * (OUTER_RADIUS_CM / BASE_MIN_FACE_DISTANCE_CM) for p in pts]
 
     # Crystal starts behind the inner Al by 0.5 mm.
-    crystal_inner_radius_cm = INNER_RADIUS_CM + 0.05   # 0.5 mm outward
+    crystal_inner_radius_cm = INNER_RADIUS_CM + INNER_AL_THICKNESS_CM
     crystal_outer_radius_cm = OUTER_RADIUS_CM
 
-    crystal_inner_base_pts = [unit(p) * crystal_inner_radius_cm for p in pts]
-    crystal_outer_base_pts = [unit(p) * crystal_outer_radius_cm for p in pts]
+    crystal_inner_base_pts = [p * (crystal_inner_radius_cm / BASE_MIN_FACE_DISTANCE_CM) for p in pts]
+    crystal_outer_base_pts = [p * (crystal_outer_radius_cm / BASE_MIN_FACE_DISTANCE_CM) for p in pts]
 
     # Shrink crystal laterally to create side-envelope space.
     crystal_inner_pts = shrink_polygon_about_center(
@@ -205,6 +219,8 @@ def make_face_json(face_id, face_type, n_sides, pts):
 
         "inner_radius_cm": INNER_RADIUS_CM,
         "outer_radius_cm": OUTER_RADIUS_CM,
+        "inner_al_thickness_cm": INNER_AL_THICKNESS_CM,
+        "scintillator_thickness_cm": SCINTILLATOR_THICKNESS_CM,
         "crystal_side_shrink_cm": CRYSTAL_SIDE_SHRINK_CM,
 
         # Full cell vertices for Al envelope
@@ -217,7 +233,7 @@ def make_face_json(face_id, face_type, n_sides, pts):
     }
 
 
-faces_json = []
+raw_faces = []
 
 
 # -------------------------------
@@ -236,14 +252,7 @@ for a, b, c in ico_faces:
         point_near_vertex(a, c),
     ]
 
-    faces_json.append(
-        make_face_json(
-            f"HEX_{hex_id:02d}",
-            "hexagon",
-            6,
-            pts
-        )
-    )
+    raw_faces.append((f"HEX_{hex_id:02d}", "hexagon", 6, pts))
 
     hex_id += 1
 
@@ -265,16 +274,17 @@ for i in range(len(vertices)):
     pts = [point_near_vertex(i, j) for j in neighbours[i]]
     pts = sort_points_around_face(pts, vertices[i])
 
-    faces_json.append(
-        make_face_json(
-            f"PENT_{pent_id:02d}",
-            "pentagon",
-            5,
-            pts
-        )
-    )
+    raw_faces.append((f"PENT_{pent_id:02d}", "pentagon", 5, pts))
 
     pent_id += 1
+
+
+BASE_MIN_FACE_DISTANCE_CM = min(face_plane_distance(face[3]) for face in raw_faces)
+
+faces_json = [
+    make_face_json(face_id, face_type, n_sides, pts)
+    for face_id, face_type, n_sides, pts in raw_faces
+]
 
 
 # -------------------------------
@@ -289,9 +299,13 @@ data = {
     ),
     "inner_diameter_cm": 20.0,
     "inner_radius_cm": INNER_RADIUS_CM,
+    "inner_face_plane_distance_cm": INNER_RADIUS_CM,
+    "inner_al_thickness_cm": INNER_AL_THICKNESS_CM,
     "detector_thickness_cm": OUTER_RADIUS_CM - INNER_RADIUS_CM,
+    "scintillator_thickness_cm": SCINTILLATOR_THICKNESS_CM,
     "detector_thickness_inch": 3.0,
     "outer_radius_cm": OUTER_RADIUS_CM,
+    "outer_face_plane_distance_cm": OUTER_RADIUS_CM,
 
     "crystal_side_shrink_cm": CRYSTAL_SIDE_SHRINK_CM,
     "crystal_side_shrink_mm": CRYSTAL_SIDE_SHRINK_CM * 10.0,
@@ -310,9 +324,10 @@ print(f"Saved {OUTPUT_FILE}")
 print(f"Total faces      : {len(faces_json)}")
 print(f"Pentagons        : {sum(1 for f in faces_json if f['type'] == 'pentagon')}")
 print(f"Hexagons         : {sum(1 for f in faces_json if f['type'] == 'hexagon')}")
-print(f"Inner radius cm  : {INNER_RADIUS_CM}")
-print(f"Outer radius cm  : {OUTER_RADIUS_CM}")
-print(f"Crystal inner radius cm : {INNER_RADIUS_CM + 0.05}")
+print(f"Inner face plane cm : {INNER_RADIUS_CM}")
+print(f"Outer face plane cm : {OUTER_RADIUS_CM}")
+print(f"Crystal inner face plane cm : {INNER_RADIUS_CM + INNER_AL_THICKNESS_CM}")
+print(f"Scintillator thickness cm : {SCINTILLATOR_THICKNESS_CM}")
 print(f"Crystal shrink   : {CRYSTAL_SIDE_SHRINK_CM * 10.0:.3f} mm per side")
 print(f"Expected gap     : {2.0 * CRYSTAL_SIDE_SHRINK_CM * 10.0:.3f} mm between crystals")
 print("Stored vertices  : full cell + shrunk crystal")

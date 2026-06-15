@@ -37,6 +37,7 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
   else if (pvName == "AlDisk" ||
            pvName == "AlInnerLining" ||
            pvName == "AlOuterLining" ||
+           G4StrUtil::contains(pvName, "SoccerChamber") ||
            G4StrUtil::contains(pvName, "AlInner_") ||
            G4StrUtil::contains(pvName, "AlSide_")) {
     fEventAction->AddEdepAl(edep);
