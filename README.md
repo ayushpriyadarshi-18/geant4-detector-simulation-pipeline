@@ -96,6 +96,21 @@ The soccerball geometry uses:
 /det/geometry soccerball
 /det/material BGO
 ```
+The soccerball geometry is generated from precomputed tessellated module vertices. The scintillator thickness is controlled in:
+
+```python
+tools/soccerball_geometry/generate_soccer_detector_json.py
+SCINTILLATOR_THICKNESS_INCH = 2.0
+```
+After changing this value, regenerate the soccerball geometry files before rebuilding:
+
+```bash
+cd tools/soccerball_geometry
+python3 generate_soccer_detector_json.py
+python3 convert_soccer_json_to_header.py
+cp SoccerBallGeometryData.hh ../../include/SoccerBallGeometryData.hh
+```
+The inner face-plane cavity distance remains fixed at 100 mm. Changing `SCINTILLATOR_THICKNESS_INCH` only changes the outward scintillator thickness of the soccerball modules.
 
 ### Layered Hollow Cylinder
 

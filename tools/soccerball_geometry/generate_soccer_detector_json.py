@@ -7,7 +7,9 @@ from itertools import combinations
 
 INNER_RADIUS_CM = 10.00
 INNER_AL_THICKNESS_CM = 0.05
-SCINTILLATOR_THICKNESS_CM = 7.62
+# Controls the outward scintillator thickness of the soccerball modules.
+SCINTILLATOR_THICKNESS_INCH = 2.0
+SCINTILLATOR_THICKNESS_CM = SCINTILLATOR_THICKNESS_INCH * 2.54
 OUTER_RADIUS_CM = INNER_RADIUS_CM + INNER_AL_THICKNESS_CM + SCINTILLATOR_THICKNESS_CM
 
 # 0.5 mm inward shrink from each polygon edge.
@@ -303,7 +305,7 @@ data = {
     "inner_al_thickness_cm": INNER_AL_THICKNESS_CM,
     "detector_thickness_cm": OUTER_RADIUS_CM - INNER_RADIUS_CM,
     "scintillator_thickness_cm": SCINTILLATOR_THICKNESS_CM,
-    "detector_thickness_inch": 3.0,
+    "detector_thickness_inch": SCINTILLATOR_THICKNESS_INCH,
     "outer_radius_cm": OUTER_RADIUS_CM,
     "outer_face_plane_distance_cm": OUTER_RADIUS_CM,
 
