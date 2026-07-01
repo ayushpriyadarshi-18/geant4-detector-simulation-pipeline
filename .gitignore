@@ -16,3 +16,7 @@ env/
 *.tmp
 *.bak
 *.swp
+
+# Private/local research runs
+private_runs/
+scratch/
